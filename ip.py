@@ -73,6 +73,21 @@ class IP:
         (string no formato x.y.z.w).
         """
         next_hop = self._next_hop(dest_addr)
-        # TODO: Assumindo que a camada superior é o protocolo TCP, monte o
-        # datagrama com o cabeçalho IP, contendo como payload o segmento.
+
+        protocolo = IPPROTO_TCP
+
+        total_length = 20 + len(segmento)  # Comprimento total do datagrama IP (cabeçalho + payload)
+
+        # Cabeçalho IP com versão IPv4 e IHL de 5 (20 bytes)
+        ip_header = struct.pack('!BBHHHBBH4s4s', (4 << 4) | 5, 0, total_length, 10, 0, 64, protocolo, 0, str2addr(self.meu_endereco), str2addr(dest_addr))
+
+        # Calcular o checksum
+        checksum = calc_checksum(ip_header)
+
+        # Inserir o checksum no cabeçalho
+        ip_header = ip_header[:10] + struct.pack('!H', checksum) + ip_header[12:]
+
+        # Montar o datagrama completo (cabeçalho + payload)
+        datagrama = ip_header + segmento
+
         self.enlace.enviar(datagrama, next_hop)
