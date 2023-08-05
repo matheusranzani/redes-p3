@@ -30,7 +30,20 @@ class IP:
 
             ttl -= 1 # Decrementa o TTL antes de encaminhar o datagrama
 
-            if ttl <= 0:
+            if ttl == 0:
+                next_hop_2 = self._next_hop(src_addr)
+
+                datagrama_errado = struct.pack('!BBHHHBBHII', (4 << 4) | 5, dscp | ecn, 48, identification, flags | frag_offset, 64, IPPROTO_ICMP, 0, int.from_bytes(str2addr(self.meu_endereco), 'big'), int.from_bytes(str2addr(src_addr), 'big'))
+                checksum2 = calc_checksum(datagrama_errado)
+
+                datagrama_errado = struct.pack('!BBHHHBBHII', (4 << 4) | 5, dscp | ecn, 48, identification, flags | frag_offset, 64, IPPROTO_ICMP, checksum2, int.from_bytes(str2addr(self.meu_endereco), 'big'), int.from_bytes(str2addr(src_addr), 'big'))
+                icmp = struct.pack('!BBHHH', 11, 0, 0, 0, 0)
+                checksum3 = calc_checksum(datagrama_errado + icmp)
+                icmp = struct.pack('!BBHHH', 11, 0, checksum3, 0, 0)
+
+                datagrama_errado = datagrama_errado + icmp + datagrama[:28]
+                self.enlace.enviar(datagrama_errado, next_hop_2)
+
                 return # Descarta o datagrama se o TTL zerar
 
             # Corrige o checksum do cabeçalho
@@ -109,15 +122,15 @@ class IP:
         total_length = 20 + len(segmento)  # Comprimento total do datagrama IP (cabeçalho + payload)
 
         # Cabeçalho IP com versão IPv4 e IHL de 5 (20 bytes)
-        ip_header = struct.pack('!BBHHHBBH4s4s', (4 << 4) | 5, 0, total_length, 10, 0, 64, protocolo, 0, str2addr(self.meu_endereco), str2addr(dest_addr))
+        header = struct.pack('!BBHHHBBH4s4s', (4 << 4) | 5, 0, total_length, 10, 0, 64, protocolo, 0, str2addr(self.meu_endereco), str2addr(dest_addr))
 
         # Calcular o checksum
-        checksum = calc_checksum(ip_header)
+        checksum = calc_checksum(header)
 
         # Inserir o checksum no cabeçalho
-        ip_header = ip_header[:10] + struct.pack('!H', checksum) + ip_header[12:]
+        header = header[:10] + struct.pack('!H', checksum) + header[12:]
 
         # Montar o datagrama completo (cabeçalho + payload)
-        datagrama = ip_header + segmento
+        datagrama = header + segmento
 
         self.enlace.enviar(datagrama, next_hop)
