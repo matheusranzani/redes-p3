@@ -30,14 +30,30 @@ class IP:
             self.enlace.enviar(datagrama, next_hop)
 
     def _next_hop(self, dest_addr):
-        # TODO: Use a tabela de encaminhamento para determinar o próximo salto
-        # (next_hop) a partir do endereço de destino do datagrama (dest_addr).
-        # Retorne o next_hop para o dest_addr fornecido.
+        """
+        Use a tabela de encaminhamento para determinar o próximo salto
+        (next_hop) a partir do endereço de destino do datagrama (dest_addr).
+        Retorne o next_hop para o dest_addr fornecido.
+        """
         dest_ip = ipaddress.IPv4Address(dest_addr)
+        matching_routes = []
+
         for network, next_hop in self.tabela:
             if dest_ip in network:
-                return str(next_hop)
-        return None  # Se nenhum casamento na tabela
+                matching_routes.append((network, next_hop))
+
+        if not matching_routes:
+            return None
+
+        # Função para comparar rotas com base no prefixo (para usar com sort)
+        def compare_routes(route):
+            return route[0].prefixlen
+
+        # Ordena as rotas coincidentes com base no comprimento do prefixo em ordem decrescente
+        matching_routes.sort(key=compare_routes, reverse=True)
+
+        # Retorna o próximo salto da rota com o prefixo mais longo
+        return str(matching_routes[0][1])
 
     def definir_endereco_host(self, meu_endereco):
         """
