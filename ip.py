@@ -1,5 +1,6 @@
 from iputils import *
 
+import ipaddress
 
 class IP:
     def __init__(self, enlace):
@@ -13,6 +14,7 @@ class IP:
         self.enlace.registrar_recebedor(self.__raw_recv)
         self.ignore_checksum = self.enlace.ignore_checksum
         self.meu_endereco = None
+        self.tabela = []
 
     def __raw_recv(self, datagrama):
         dscp, ecn, identification, flags, frag_offset, ttl, proto, \
@@ -31,7 +33,11 @@ class IP:
         # TODO: Use a tabela de encaminhamento para determinar o próximo salto
         # (next_hop) a partir do endereço de destino do datagrama (dest_addr).
         # Retorne o next_hop para o dest_addr fornecido.
-        pass
+        dest_ip = ipaddress.IPv4Address(dest_addr)
+        for network, next_hop in self.tabela:
+            if dest_ip in network:
+                return str(next_hop)
+        return None  # Se nenhum casamento na tabela
 
     def definir_endereco_host(self, meu_endereco):
         """
@@ -51,7 +57,9 @@ class IP:
         """
         # TODO: Guarde a tabela de encaminhamento. Se julgar conveniente,
         # converta-a em uma estrutura de dados mais eficiente.
-        pass
+        self.tabela = []
+        for cidr, next_hop in tabela:
+            self.tabela.append((ipaddress.IPv4Network(cidr), ipaddress.IPv4Address(next_hop)))
 
     def registrar_recebedor(self, callback):
         """
